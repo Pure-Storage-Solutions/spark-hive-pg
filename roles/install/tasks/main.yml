@@ -1,0 +1,156 @@
+- name: Add Trino user with password
+  user:
+    name: "{{ trino_user }}"
+    password: "{{ trino_password | password_hash('sha512') }}"
+    state: present
+    shell: /bin/bash
+
+- name: Install a package using apt
+  apt:
+    name: 
+    - wget 
+    - apt-transport-https 
+    - gpg
+    - acl
+    state: present
+
+- name: Run a shell command
+  shell: wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor | tee /etc/apt/trusted.gpg.d/adoptium.gpg > /dev/nul
+
+- name: Run a shell command
+  shell: echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+
+- name: Run apt update
+  apt:
+    update_cache: yes
+
+- name: Install temurin-jdk 
+  apt:
+    name: 
+    - temurin-23-jdk
+    state: present
+
+
+- name: Update .bashrc for trino user with JAVA_HOME
+  become: yes
+  lineinfile:
+    path: /home/trino/.bashrc
+    line: 'export JAVA_HOME=/usr/lib/jvm/temurin-23-jdk-amd64/'
+    state: present
+    create: yes
+
+
+- name: Ensure Trino user limits are set in /etc/security/limits.conf
+  become: yes
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+    state: present
+    create: yes
+  loop:
+    - "trino soft nofile 131072"
+    - "trino hard nofile 131072"
+    - "trino soft nproc 128000"
+    - "trino hard nproc 128000"
+
+
+- name: Download, unzip, and untar a package
+  block:
+    - name: Download the package
+      get_url:
+        url: "{{ package_url }}"
+        dest: /tmp/package.tar.gz
+
+    - name: Extract the package
+      unarchive:
+        src: /tmp/package.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Move extracted folder to /usr/local
+      command:
+        cmd: mv /tmp/trino-server-464 "{{ trino_install_dir }}"
+        creates: "{{ trino_install_dir }}"
+
+- name: Create Trino data directory
+  file:
+    path: "{{ trino_spill_dir }}"
+    state: directory
+    owner: "{{ trino_user }}"
+    group: "{{ trino_user }}"
+    mode: 0755
+
+- name: Create Trino data directory
+  file:
+    path: "{{ trino_data_dir }}"
+    state: directory
+    owner: "{{ trino_user }}"
+    group: "{{ trino_user }}"
+    mode: 0755
+
+- name: Create Trino etc/catalog directories
+  file:
+    path: "{{ trino_install_dir }}/etc/catalog"
+    state: directory
+    owner: "{{ trino_user }}"
+    group: "{{ trino_user }}"
+    mode: 0755
+    recurse: yes
+
+- name: Display all variables/facts known for a host
+  debug:
+    var: hostvars[inventory_hostname].ansible_fqdn
+
+- name: Set a random number between 1 and 100
+  set_fact:
+    random_number: "{{ ansible_date_time.iso8601_micro | to_uuid }}"
+
+- name: Create properties files under /usr/local/trino/etc
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ trino_install_dir }}/etc/{{ item.dest }}"
+    owner: "{{ trino_user }}"
+    group: "{{ trino_user }}"
+    mode: 0644
+  tags:
+    - config
+  with_items:
+    -
+      src: node.properties.j2
+      dest: node.properties
+    -
+      src: config.properties.j2
+      dest: config.properties
+    -
+      src: jvm.config.j2
+      dest: jvm.config
+    -
+      src: log.properties.j2
+      dest: log.properties
+    -
+      src: exchange-manager.properties.j2
+      dest: exchange-manager.properties
+
+
+- name: Create catalog files under /usr/local/trino/etc/catalog
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ trino_install_dir }}/etc/catalog/{{ item.dest }}"
+    owner: "{{ trino_user }}"
+    group: "{{ trino_user }}"
+    mode: 0644
+  with_items:
+    -
+      src: delta.properties.j2
+      dest: delta.properties
+    -
+      src: iceberg.properties.j2
+      dest: iceberg.properties
+
+- name: Create symbolic link for /usr/bin/python pointing to /usr/bin/python3
+  become: yes
+  file:
+    src: /usr/bin/python3
+    dest: /usr/bin/python
+    state: link
+

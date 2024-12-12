@@ -1,0 +1,20 @@
+- name: Manage Trino
+  hosts: all
+  become: yes
+  vars:
+    action: "{{ lookup('env', 'ACTION') | default('install', true) }}"
+  tasks:
+    - name: Include install role if action is install
+      include_role:
+        name: install
+      when: action == "install"
+
+    - name: Include start role if action is start
+      include_role:
+        name: start
+      when: action == "start"
+
+    - name: Include stop role if action is stop
+      include_role:
+        name: stop
+      when: action == "stop"

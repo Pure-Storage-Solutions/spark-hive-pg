@@ -1,0 +1,6 @@
+trino_user: trino
+trino_password: Pure123
+trino_install_dir: /usr/local/trino
+trino_data_dir: /data/trino/data
+package_url: https://repo1.maven.org/maven2/io/trino/trino-server/464/trino-server-464.tar.gz  # Replace with the actual URL
+trino_spill_dir:  /data/trino/trino-spill

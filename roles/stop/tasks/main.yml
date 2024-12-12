@@ -1,0 +1,17 @@
+- name: Check if Trino process is running
+  become: yes
+  shell: ps -few | grep trino|grep java|grep -v grep|wc -l
+  register: trino_status
+  failed_when: false
+
+- name: print trino_status
+  debug: 
+    var: trino_status.stdout_lines[0]
+
+- name: Stop the Trino process if not running
+  become: yes
+  become_user: trino
+  shell: "{{ trino_install_dir }}/bin/launcher stop"
+  args:
+    chdir: "{{ trino_install_dir }}"
+  when: trino_status.stdout_lines[0] == "1"

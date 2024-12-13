@@ -1,17 +1,75 @@
-- name: Check if Trino process is running
+- name: Start Apache Spark and Validate Hive Integration
+  hosts: all
   become: yes
-  shell: ps -few | grep trino|grep java|grep -v grep|wc -l
-  register: trino_status
-  failed_when: false
 
-- name: print trino_status
-  debug: 
-    var: trino_status.stdout_lines[0]
+  tasks:
 
-- name: Start the Trino process if not running
-  become: yes
-  become_user: trino
-  shell: "{{ trino_install_dir }}/bin/launcher start"
-  args:
-    chdir: "{{ trino_install_dir }}"
-  when: trino_status.stdout_lines[0] == "0"
+    - name: Start Spark Master Node
+      shell: "{{ spark_home }}/sbin/start-master.sh"
+      args:
+        executable: /bin/bash
+      environment:
+        SPARK_HOME: "{{ spark_home }}"
+      register: master_output
+
+    - name: Start Spark Worker Node
+      shell: "{{ spark_home }}/sbin/start-worker.sh spark://{{ master_hostname }}:7077"
+      args:
+        executable: /bin/bash
+      environment:
+        SPARK_HOME: "{{ spark_home }}"
+      register: worker_output
+
+    - name: Display Spark Web UI Info
+      debug:
+        msg: "Access Spark Web UI at http://{{ master_ip }}:8080"
+
+    - name: Start HiveServer2 Service
+      shell: "{{ hive_home }}/bin/hive --service hiveserver2 &"
+      args:
+        executable: /bin/bash
+      environment:
+        HIVE_HOME: "{{ hive_home }}"
+      register: hiveserver2_output
+
+    - name: Start Hive Metastore Service
+      shell: "{{ hive_home }}/bin/hive --service metastore &"
+      args:
+        executable: /bin/bash
+      environment:
+        HIVE_HOME: "{{ hive_home }}"
+      register: metastore_output
+
+    - name: Validate Hive Integration - Create Test Table
+      shell: |
+        {{ hive_home }}/bin/beeline -u jdbc:hive2:// -e "CREATE TABLE IF NOT EXISTS test_table (id INT, name STRING);"
+      args:
+        executable: /bin/bash
+      environment:
+        HIVE_HOME: "{{ hive_home }}"
+      register: create_table_output
+
+    - name: Validate Hive Integration - Query Table Using Spark
+      shell: |
+        {{ spark_home }}/bin/spark-shell --conf spark.sql.catalogImplementation=hive -e "spark.sql(\"SHOW TABLES\").show(); spark.sql(\"SELECT * FROM test_table\").show();"
+      args:
+        executable: /bin/bash
+      environment:
+        SPARK_HOME: "{{ spark_home }}"
+      register: query_table_output
+
+    - name: Output Results
+      debug:
+        msg:
+          - "Master Node Output: {{ master_output.stdout }}"
+          - "Worker Node Output: {{ worker_output.stdout }}"
+          - "HiveServer2 Output: {{ hiveserver2_output.stdout }}"
+          - "Metastore Output: {{ metastore_output.stdout }}"
+          - "Create Table Output: {{ create_table_output.stdout }}"
+          - "Query Table Output: {{ query_table_output.stdout }}"
+
+  vars:
+    spark_home: "/usr/local/spark"
+    hive_home: "/usr/local/hive"
+    master_hostname: "<master-hostname>"
+    master_ip: "<master-IP>"

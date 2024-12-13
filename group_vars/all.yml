@@ -1,6 +1,11 @@
-trino_user: trino
-trino_password: Pure123
-trino_install_dir: /usr/local/trino
-trino_data_dir: /data/trino/data
-package_url: https://repo1.maven.org/maven2/io/trino/trino-server/464/trino-server-464.tar.gz  # Replace with the actual URL
-trino_spill_dir:  /data/trino/trino-spill
+bucket_name: "my-bucket"
+access_key: "PSFBSAZRBFxxxxxxxNGFCMKODCBDHOI"
+secret_key: "A1A9123EAc2xxxxxF51a36acfPEFM"
+endpoint: "10.21.2x.x"
+path_style_access: true
+endpoint_region: "anything"
+ssl_enabled: false
+hive_home: /usr/local/hive
+spark_home: /usr/local/spark
+master_hostname: "<master-hostname>"
+master_ip: "<master-IP>"

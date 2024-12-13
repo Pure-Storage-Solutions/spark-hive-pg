@@ -1,0 +1,34 @@
+<configuration>
+  <property>
+    <name>fs.default.name</name>
+    <value>s3a://{{ bucket_name }}/</value>
+  </property>
+  <property>
+    <name>fs.s3a.access.key</name>
+    <value>{{ access_key }}</value>
+    <description>AWS access key ID used by S3A file system. Omit for IAM role-based or provider-based authentication.</description>
+  </property>
+  <property>
+    <name>fs.s3a.secret.key</name>
+    <value>{{ secret_key }}</value>
+    <description>AWS secret key used by S3A file system. Omit for IAM role-based or provider-based authentication.</description>
+  </property>
+  <property>
+    <name>fs.s3a.endpoint</name>
+    <value>{{ endpoint }}</value>
+    <description>AWS S3 endpoint to connect to.</description>
+  </property>
+  <property>
+    <name>fs.s3a.path.style.access</name>
+    <value>{{ path_style_access }}</value>
+  </property>
+  <property>
+    <name>fs.s3a.endpoint.region</name>
+    <value>{{ endpoint_region }}</value>
+  </property>
+  <property>
+    <name>fs.s3a.connection.ssl.enabled</name>
+    <value>{{ ssl_enabled }}</value>
+    <description>Enable SSL for the S3-compatible store connection</description>
+  </property>
+</configuration>
